@@ -1,0 +1,1386 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ModOps - Crime Analysis Dashboard</title>
+    <!-- Bootstrap CSS -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <!-- Leaflet CSS -->
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <!-- Chart.js -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <!-- DataTables CSS -->
+    <link rel="stylesheet" href="https://cdn.datatables.net/1.13.6/css/dataTables.bootstrap5.min.css">
+    <link rel="stylesheet" href="https://cdn.datatables.net/buttons/2.4.2/css/buttons.dataTables.min.css">
+    <!-- Google Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <!-- Font Awesome -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- AOS Animation -->
+    <link href="https://unpkg.com/aos@2.3.1/dist/aos.css" rel="stylesheet">
+    <style>
+        :root {
+            --primary: #2a52be;
+            --primary-dark: #1a3a8f;
+            --secondary: #ff6b6b;
+            --accent: #4ecdc4;
+            --dark: #2d3748;
+            --light: #f8f9fa;
+            --gray: #e2e8f0;
+            --success: #48bb78;
+            --warning: #ed8936;
+            --danger: #e53e3e;
+            --info: #4299e1;
+            
+            /* Dark mode variables */
+            --bg-color: #f5f7fa;
+            --text-color: #2d3748;
+            --card-bg: white;
+            --sidebar-bg: white;
+            --header-bg: white;
+            --border-color: #e2e8f0;
+            --table-header-bg: var(--primary);
+            --table-header-text: white;
+            --table-row-hover: rgba(42, 82, 190, 0.05);
+            --chart-grid: #e2e8f0;
+            --chart-tooltip-bg: #2d3748;
+        }
+
+        /* Dark mode variables */
+        .dark-mode {
+            --bg-color: #1a202c;
+            --text-color: #f7fafc;
+            --card-bg: #2d3748;
+            --sidebar-bg: #2d3748;
+            --header-bg: #2d3748;
+            --border-color: #4a5568;
+            --table-header-bg: #1a3a8f;
+            --table-header-text: white;
+            --table-row-hover: rgba(42, 82, 190, 0.1);
+            --chart-grid: #4a5568;
+            --chart-tooltip-bg: #1a202c;
+        }
+
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: var(--bg-color);
+            min-height: 100vh;
+            margin: 0;
+            overflow-x: hidden;
+            color: var(--text-color);
+            transition: background-color 0.3s ease, color 0.3s ease;
+        }
+
+        .sidebar {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 280px;
+            height: 100%;
+            background: var(--sidebar-bg);
+            color: var(--text-color);
+            padding: 30px 20px;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+            transition: all 0.3s ease;
+            z-index: 1000;
+            border-right: 1px solid var(--border-color);
+        }
+
+        .sidebar .logo {
+            font-size: 24px;
+            font-weight: 700;
+            text-align: center;
+            margin-bottom: 40px;
+            color: var(--primary);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
+        }
+
+        .sidebar ul {
+            list-style: none;
+            padding: 0;
+        }
+
+        .sidebar ul li a {
+            color: var(--text-color);
+            display: flex;
+            align-items: center;
+            padding: 12px 15px;
+            margin-bottom: 8px;
+            border-radius: 8px;
+            text-decoration: none;
+            transition: all 0.3s ease;
+            font-weight: 500;
+        }
+
+        .sidebar ul li a:hover, .sidebar ul li a.active {
+            background: rgba(42, 82, 190, 0.1);
+            color: var(--primary);
+            transform: translateX(5px);
+        }
+
+        .sidebar ul li a i {
+            width: 24px;
+            text-align: center;
+            margin-right: 12px;
+            color: var(--primary);
+        }
+
+        .main-content {
+            margin-left: 280px;
+            padding: 30px;
+            transition: margin-left 0.3s ease;
+        }
+
+        .dashboard-header {
+            background: var(--header-bg);
+            color: var(--text-color);
+            padding: 25px;
+            border-radius: 12px;
+            margin-bottom: 30px;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05);
+            border-left: 4px solid var(--primary);
+            transition: transform 0.3s ease, box-shadow 0.3s ease;
+        }
+
+        .dashboard-header:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
+        }
+
+        .dashboard-header h1 {
+            font-weight: 700;
+            color: var(--primary);
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .dashboard-header .lead {
+            color: #64748b;
+            font-weight: 500;
+        }
+
+        .chart-container {
+            background: var(--card-bg);
+            padding: 25px;
+            border-radius: 12px;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05);
+            margin-bottom: 30px;
+            transition: all 0.3s ease;
+            border-top: 3px solid transparent;
+            border: 1px solid var(--border-color);
+        }
+
+        .chart-container:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
+        }
+
+        #mapContainer {
+            border-top-color: var(--primary);
+        }
+
+        #barChartContainer {
+            border-top-color: var(--secondary);
+        }
+
+        #pieChartContainer {
+            border-top-color: var(--accent);
+        }
+
+        #lineChartContainer {
+            border-top-color: var(--info);
+        }
+
+        #criminalTableContainer {
+            border-top-color: var(--warning);
+        }
+
+        #recidivismChartContainer {
+            border-top-color: var(--danger);
+        }
+
+        .chart-container h2 {
+            font-size: 18px;
+            font-weight: 600;
+            margin-bottom: 20px;
+            color: var(--text-color);
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .chart-container h2 i {
+            color: inherit;
+        }
+
+        #map {
+            height: 500px;
+            width: 100%;
+            border-radius: 8px;
+            border: 1px solid var(--border-color);
+        }
+
+        .error-message {
+            color: var(--danger);
+            text-align: center;
+            margin: 20px 0;
+            font-weight: 500;
+            padding: 15px;
+            background: rgba(229, 62, 62, 0.1);
+            border-radius: 8px;
+        }
+
+        canvas {
+            max-width: 100%;
+            border-radius: 8px;
+        }
+
+        /* DataTable styling */
+        #criminalTable {
+            border-radius: 8px;
+            overflow: hidden;
+            border: 1px solid var(--border-color);
+        }
+
+        #criminalTable thead th {
+            background-color: var(--table-header-bg);
+            color: var(--table-header-text);
+            font-weight: 500;
+        }
+
+        #criminalTable tbody tr:hover {
+            background-color: var(--table-row-hover);
+        }
+
+        .dt-buttons .btn {
+            border-radius: 6px;
+            font-weight: 500;
+            padding: 8px 15px;
+        }
+
+        /* Stats cards */
+        .stats-container {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+            gap: 20px;
+            margin-bottom: 30px;
+        }
+
+        .stat-card {
+            background: var(--card-bg);
+            padding: 20px;
+            border-radius: 10px;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05);
+            transition: all 0.3s ease;
+            border-left: 4px solid var(--primary);
+            border: 1px solid var(--border-color);
+        }
+
+        .stat-card:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
+        }
+
+        .stat-card h3 {
+            font-size: 14px;
+            font-weight: 600;
+            color: #64748b;
+            margin-bottom: 10px;
+        }
+
+        .stat-card .value {
+            font-size: 24px;
+            font-weight: 700;
+            color: var(--text-color);
+        }
+
+        .stat-card .trend {
+            display: flex;
+            align-items: center;
+            font-size: 12px;
+            margin-top: 5px;
+        }
+
+        .trend.up {
+            color: var(--danger);
+        }
+
+        .trend.down {
+            color: var(--success);
+        }
+
+        /* Search controls */
+        .search-controls {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 15px;
+            flex-wrap: wrap;
+        }
+
+        .search-controls .form-control,
+        .search-controls .form-select {
+            min-width: 200px;
+            flex-grow: 1;
+            background-color: var(--card-bg);
+            color: var(--text-color);
+            border-color: var(--border-color);
+        }
+
+        .search-controls .input-group-text {
+            background-color: var(--card-bg);
+            color: var(--text-color);
+            border-color: var(--border-color);
+        }
+
+        /* Dark mode toggle */
+        .theme-toggle {
+            position: fixed;
+            bottom: 30px;
+            left: 30px;
+            z-index: 1001;
+            width: 50px;
+            height: 50px;
+            border-radius: 50%;
+            background: var(--card-bg);
+            color: var(--text-color);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+            border: 1px solid var(--border-color);
+            transition: all 0.3s ease;
+        }
+
+        .theme-toggle:hover {
+            transform: scale(1.1);
+        }
+
+        /* Dropdown menu styling */
+        .dropdown-menu {
+            background-color: var(--card-bg);
+            border: 1px solid var(--border-color);
+        }
+
+        .dropdown-item {
+            color: var(--text-color);
+        }
+
+        .dropdown-item:hover {
+            background-color: rgba(42, 82, 190, 0.1);
+            color: var(--primary);
+        }
+
+        /* Alert styling */
+        .alert-info {
+            background-color: rgba(66, 153, 225, 0.1);
+            border-color: rgba(66, 153, 225, 0.2);
+            color: var(--text-color);
+        }
+
+        /* Animation classes */
+        .fade-in {
+            animation: fadeIn 0.5s ease-in;
+        }
+
+        .slide-up {
+            animation: slideUp 0.5s ease-out;
+        }
+
+        .pulse {
+            animation: pulse 2s infinite;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; }
+            to { opacity: 1; }
+        }
+
+        @keyframes slideUp {
+            from { 
+                opacity: 0;
+                transform: translateY(20px);
+            }
+            to { 
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        @keyframes pulse {
+            0% { transform: scale(1); }
+            50% { transform: scale(1.05); }
+            100% { transform: scale(1); }
+        }
+
+        /* Responsive */
+        @media (max-width: 992px) {
+            .sidebar {
+                width: 80px;
+                padding: 20px 10px;
+            }
+
+            .sidebar .logo span, .sidebar ul li a span {
+                display: none;
+            }
+
+            .sidebar .logo i {
+                margin-right: 0;
+                font-size: 28px;
+            }
+
+            .sidebar ul li a {
+                justify-content: center;
+                padding: 15px 5px;
+            }
+
+            .sidebar ul li a i {
+                margin-right: 0;
+                font-size: 18px;
+            }
+
+            .main-content {
+                margin-left: 80px;
+                padding: 20px;
+            }
+
+            .theme-toggle {
+                left: 15px;
+                bottom: 15px;
+                width: 40px;
+                height: 40px;
+            }
+        }
+
+        @media (max-width: 768px) {
+            .stats-container {
+                grid-template-columns: 1fr 1fr;
+            }
+            
+            .search-controls .form-control,
+            .search-controls .form-select {
+                min-width: 100%;
+            }
+        }
+
+        @media (max-width: 576px) {
+            .stats-container {
+                grid-template-columns: 1fr;
+            }
+            
+            .main-content {
+                padding: 15px;
+            }
+            
+            .chart-container {
+                padding: 20px 15px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <!-- Sidebar -->
+    <div class="sidebar">
+        <div class="logo">
+            <i class="fas fa-shield-alt"></i>
+            <span>ModOps</span>
+        </div>
+        <ul>
+            <li><a href="#mapContainer" class="active"><i class="fas fa-map-marked-alt"></i> <span>Crime Map</span></a></li>
+            <li><a href="#barChartContainer"><i class="fas fa-chart-bar"></i> <span>Crime by Hour</span></a></li>
+            <li><a href="#pieChartContainer"><i class="fas fa-chart-pie"></i> <span>Crime by Location</span></a></li>
+            <li><a href="#lineChartContainer"><i class="fas fa-chart-line"></i> <span>Crime Trends</span></a></li>
+            <li><a href="#criminalTableContainer"><i class="fas fa-user-shield"></i> <span>Criminal Records</span></a></li>
+            <li><a href="#recidivismChartContainer"><i class="fas fa-redo"></i> <span>Recidivism</span></a></li>
+        </ul>
+    </div>
+
+    <!-- Theme Toggle Button -->
+    <div class="theme-toggle" id="themeToggle">
+        <i class="fas fa-moon" id="themeIcon"></i>
+    </div>
+
+    <!-- Main Content -->
+    <div class="main-content">
+        <div class="dashboard-header" data-aos="fade-up">
+            <h1><i class="fas fa-shield-alt"></i> ModOps Dashboard</h1>
+            <p class="lead">Comprehensive crime data visualization for Chennai</p>
+        </div>
+
+        <!-- Stats Cards -->
+        <div class="stats-container">
+            <div class="stat-card fade-in" data-aos="fade-up" data-aos-delay="100">
+                <h3>Total Crimes</h3>
+                <div class="value" id="totalCrimes">Loading...</div>
+                <div class="trend up">
+                    <i class="fas fa-arrow-up"></i> <span id="totalCrimesTrend">Calculating...</span>
+                </div>
+            </div>
+            <div class="stat-card fade-in" data-aos="fade-up" data-aos-delay="200">
+                <h3>Arrest Rate</h3>
+                <div class="value" id="arrestRate">Loading...</div>
+                <div class="trend down">
+                    <i class="fas fa-arrow-down"></i> <span id="arrestRateTrend">Calculating...</span>
+                </div>
+            </div>
+            <div class="stat-card fade-in" data-aos="fade-up" data-aos-delay="300">
+                <h3>Hotspot Areas</h3>
+                <div class="value" id="hotspotAreas">Loading...</div>
+                <div class="trend up">
+                    <i class="fas fa-arrow-up"></i> <span id="hotspotTrend">Calculating...</span>
+                </div>
+            </div>
+            <div class="stat-card fade-in" data-aos="fade-up" data-aos-delay="400">
+                <h3>Recidivism Rate</h3>
+                <div class="value" id="recidivismRate">Loading...</div>
+                <div class="trend down">
+                    <i class="fas fa-arrow-down"></i> <span id="recidivismTrend">Calculating...</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- Map-based Heatmap -->
+        <div class="chart-container slide-up" id="mapContainer" data-aos="fade-up">
+            <h2><i class="fas fa-map-marker-alt"></i> Crime Density Map</h2>
+            <div id="map"></div>
+            <div class="mt-3 d-flex justify-content-between align-items-center">
+                <div class="legend">
+                    <span class="me-3"><span class="badge bg-primary me-2" style="width: 15px; height: 15px; display: inline-block;"></span> Low Crime</span>
+                    <span class="me-3"><span class="badge bg-warning me-2" style="width: 15px; height: 15px; display: inline-block;"></span> Medium Crime</span>
+                    <span><span class="badge bg-danger me-2" style="width: 15px; height: 15px; display: inline-block;"></span> High Crime</span>
+                </div>
+            </div>
+            <div id="mapError" class="error-message" style="display: none;">Failed to load map data.</div>
+        </div>
+
+        <!-- Bar Chart -->
+        <div class="chart-container slide-up" id="barChartContainer" data-aos="fade-up">
+            <h2><i class="fas fa-clock"></i> Total Crimes per Hour</h2>
+            <canvas id="barChart"></canvas>
+            <div id="barChartError" class="error-message" style="display: none;">Failed to load bar chart data.</div>
+        </div>
+
+        <!-- Pie Chart -->
+        <div class="chart-container slide-up" id="pieChartContainer" data-aos="fade-up">
+            <h2><i class="fas fa-map-pin"></i> Total Crimes per Location</h2>
+            <div class="row">
+                <div class="col-md-8">
+                    <canvas id="pieChart"></canvas>
+                </div>
+                <div class="col-md-4">
+                    <div id="pieLegend" class="mt-3"></div>
+                </div>
+            </div>
+            <div id="pieChartError" class="error-message" style="display: none;">Failed to load pie chart data.</div>
+        </div>
+
+        <!-- Line Chart -->
+        <div class="chart-container slide-up" id="lineChartContainer" data-aos="fade-up">
+            <h2><i class="fas fa-exclamation-triangle"></i> Crime Types Over Time</h2>
+            <canvas id="lineChart"></canvas>
+            <div class="mt-3 d-flex justify-content-between align-items-center">
+                <div class="form-check form-switch">
+                    <input class="form-check-input" type="checkbox" id="trendLineToggle" checked>
+                    <label class="form-check-label" for="trendLineToggle">Show Trend Line</label>
+                </div>
+                <button class="btn btn-sm btn-outline-primary" id="exportLineChart">
+                    <i class="fas fa-download me-1"></i> Export
+                </button>
+            </div>
+            <div id="lineChartError" class="error-message" style="display: none;">Failed to load line chart data.</div>
+        </div>
+
+        <!-- Criminal History Table -->
+        <div class="chart-container slide-up" id="criminalTableContainer" data-aos="fade-up">
+            <h2><i class="fas fa-users"></i> Criminal Records</h2>
+            <div class="search-controls">
+                <div class="input-group">
+                    <span class="input-group-text"><i class="fas fa-search"></i></span>
+                    <input type="text" id="criminalSearch" class="form-control" placeholder="Search criminals...">
+                </div>
+                <select id="crimeTypeFilter" class="form-select">
+                    <option value="">All Crime Types</option>
+                </select>
+                <select id="motiveFilter" class="form-select">
+                    <option value="">All Motives</option>
+                </select>
+                <select id="placeFilter" class="form-select">
+                    <option value="">All Locations</option>
+                </select>
+                <button class="btn btn-primary pulse" id="addRecordBtn">
+                    <i class="fas fa-plus me-1"></i> Add Record
+                </button>
+            </div>
+            <table id="criminalTable" class="table table-striped display">
+                <thead>
+                    <tr>
+                        <th><i class="fas fa-user me-1"></i> Name</th>
+                        <th><i class="fas fa-exclamation-circle me-1"></i> Crime Type</th>
+                        <th><i class="fas fa-calendar-day me-1"></i> Date</th>  <!-- New column -->
+                        <th><i class="fas fa-clock me-1"></i> Time</th>
+                        <th><i class="fas fa-map-marker-alt me-1"></i> Location</th>
+                        <th><i class="fas fa-users me-1"></i> Co-Criminals</th>
+                        <th><i class="fas fa-gavel me-1"></i> Status</th>
+                        <th><i class="fas fa-ellipsis-v me-1"></i> Actions</th>
+                    </tr>
+                </thead>
+                <tbody></tbody>
+            </table>
+            <div id="tableError" class="error-message" style="display: none;">Failed to load criminal history data.</div>
+        </div>
+
+        <!-- Recidivism Bar Chart -->
+        <div class="chart-container slide-up" id="recidivismChartContainer" data-aos="fade-up">
+            <h2><i class="fas fa-redo-alt"></i> Recidivism Analysis</h2>
+            <canvas id="recidivismChart"></canvas>
+            <div class="mt-3">
+                <div class="alert alert-info">
+                    <i class="fas fa-info-circle me-2"></i> Recidivism rate is calculated based on repeat offenses within 3 years of release.
+                </div>
+            </div>
+            <div id="recidivismChartError" class="error-message" style="display: none;">Failed to load recidivism data.</div>
+        </div>
+    </div>
+
+    <!-- Scripts -->
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <script src="https://cdn.datatables.net/1.13.6/js/jquery.dataTables.min.js"></script>
+    <script src="https://cdn.datatables.net/1.13.6/js/dataTables.bootstrap5.min.js"></script>
+    <script src="https://cdn.datatables.net/buttons/2.4.2/js/dataTables.buttons.min.js"></script>
+    <script src="https://cdn.datatables.net/buttons/2.4.2/js/buttons.html5.min.js"></script>
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="https://unpkg.com/aos@2.3.1/dist/aos.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels@2.0.0"></script>
+
+    <script>
+        // Global variables to store chart instances
+        let barChart, pieChart, lineChart, recidivismChart, crimeMap;
+
+        // Initialize AOS animation
+        AOS.init({
+            duration: 800,
+            easing: 'ease-in-out',
+            once: true
+        });
+
+        // Initialize the dashboard when DOM is loaded
+        document.addEventListener('DOMContentLoaded', function() {
+            // Check for saved theme preference
+            const savedTheme = localStorage.getItem('theme') || 'light';
+            setTheme(savedTheme);
+            
+            // Initialize all components
+            initializeMap();
+            fetchFilters().then(() => {
+                initializeDataTable();
+            });
+            fetchAllData();
+            
+            // Set up event listeners
+            document.getElementById('trendLineToggle').addEventListener('change', toggleTrendLine);
+            document.getElementById('exportLineChart').addEventListener('click', exportLineChart);
+            document.getElementById('addRecordBtn').addEventListener('click', addNewRecord);
+            
+            // Filter event listeners
+            document.getElementById('crimeTypeFilter').addEventListener('change', function() {
+                criminalTable.ajax.reload();
+            });
+            
+            document.getElementById('motiveFilter').addEventListener('change', function() {
+                criminalTable.ajax.reload();
+            });
+            
+            document.getElementById('placeFilter').addEventListener('change', function() {
+                criminalTable.ajax.reload();
+            });
+            
+            // Theme toggle listener
+            document.getElementById('themeToggle').addEventListener('click', toggleTheme);
+        });
+
+        // Theme management functions
+        function toggleTheme() {
+            const currentTheme = document.body.classList.contains('dark-mode') ? 'dark' : 'light';
+            const newTheme = currentTheme === 'dark' ? 'light' : 'dark';
+            setTheme(newTheme);
+            localStorage.setItem('theme', newTheme);
+        }
+
+        function setTheme(theme) {
+            if (theme === 'dark') {
+                document.body.classList.add('dark-mode');
+                document.getElementById('themeIcon').className = 'fas fa-sun';
+            } else {
+                document.body.classList.remove('dark-mode');
+                document.getElementById('themeIcon').className = 'fas fa-moon';
+            }
+            
+            // Update charts if they exist
+            updateChartsForTheme();
+        }
+
+        function updateChartsForTheme() {
+            const isDark = document.body.classList.contains('dark-mode');
+            const gridColor = isDark ? '#4a5568' : '#e2e8f0';
+            const textColor = isDark ? '#f7fafc' : '#2d3748';
+            const tooltipBg = isDark ? '#1a202c' : '#2d3748';
+            
+            // Update bar chart if it exists
+            if (barChart) {
+                barChart.options.scales.x.grid.color = gridColor;
+                barChart.options.scales.y.grid.color = gridColor;
+                barChart.update();
+            }
+            
+            // Update line chart if it exists
+            if (lineChart) {
+                lineChart.options.scales.x.grid.color = gridColor;
+                lineChart.options.scales.y.grid.color = gridColor;
+                lineChart.update();
+            }
+            
+            // Update recidivism chart if it exists
+            if (recidivismChart) {
+                recidivismChart.options.scales.x.grid.color = gridColor;
+                recidivismChart.options.scales.y.grid.color = gridColor;
+                recidivismChart.update();
+            }
+        }
+
+        // Fetch all filters
+        function fetchFilters() {
+            return fetch('/api/filters')
+                .then(response => response.json())
+                .then(data => {
+                    if (data.crime_types) {
+                        const crimeTypeSelect = document.getElementById('crimeTypeFilter');
+                        data.crime_types.forEach(type => {
+                            const option = document.createElement('option');
+                            option.value = type;
+                            option.textContent = type;
+                            crimeTypeSelect.appendChild(option);
+                        });
+                    }
+                    
+                    if (data.motives) {
+                        const motiveSelect = document.getElementById('motiveFilter');
+                        data.motives.forEach(motive => {
+                            const option = document.createElement('option');
+                            option.value = motive;
+                            option.textContent = motive;
+                            motiveSelect.appendChild(option);
+                        });
+                    }
+                    
+                    if (data.places) {
+                        const placeSelect = document.getElementById('placeFilter');
+                        data.places.forEach(place => {
+                            const option = document.createElement('option');
+                            option.value = place;
+                            option.textContent = place;
+                            placeSelect.appendChild(option);
+                        });
+                    }
+                })
+                .catch(error => {
+                    console.error('Error fetching filters:', error);
+                });
+        }
+
+        // Fetch all data initially
+        function fetchAllData() {
+            fetchDashboardStats();
+            fetchMapData();
+            fetchBarChartData();
+            fetchPieChartData();
+            fetchLineChartData();
+            fetchRecidivismData();
+        }
+
+        // Fetch dashboard stats
+        function fetchDashboardStats() {
+            fetch('/api/crime-data')
+                .then(response => response.json())
+                .then(data => {
+                    if (data.stats) {
+                        document.getElementById('totalCrimes').textContent = data.stats.total_crimes.toLocaleString();
+                        document.getElementById('arrestRate').textContent = data.stats.arrest_rate + '%';
+                        document.getElementById('hotspotAreas').textContent = data.stats.hotspot_areas;
+                        document.getElementById('recidivismRate').textContent = data.stats.recidivism_rate + '%';
+                        
+                        // Update trend indicators (example - you would replace with actual trend data)
+                        document.getElementById('totalCrimesTrend').textContent = '12% from last month';
+                        document.getElementById('arrestRateTrend').textContent = '5% from last month';
+                        document.getElementById('hotspotTrend').textContent = '2 new this month';
+                        document.getElementById('recidivismTrend').textContent = '8% from last quarter';
+                    }
+                })
+                .catch(error => {
+                    console.error('Error fetching dashboard stats:', error);
+                });
+        }
+
+        // Initialize and fetch map data
+        function initializeMap() {
+            crimeMap = L.map('map').setView([13.0827, 80.2707], 12);
+            L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+                attribution: '© OpenStreetMap contributors'
+            }).addTo(crimeMap);
+            fetchMapData();
+        }
+
+        function fetchMapData() {
+            fetch('/api/crime-data')
+                .then(response => response.json())
+                .then(data => {
+                    if (!data.map_heatmap) {
+                        throw new Error('No map data available');
+                    }
+                    
+                    // Clear existing markers
+                    crimeMap.eachLayer(layer => {
+                        if (layer instanceof L.CircleMarker) {
+                            crimeMap.removeLayer(layer);
+                        }
+                    });
+
+                    // Add new markers
+                    data.map_heatmap.forEach(point => {
+                        const radius = Math.min(point.count / 5, 20);
+                        let color;
+                        if (point.count < 10) {
+                            color = '#4299e1'; // blue for low
+                        } else if (point.count < 30) {
+                            color = '#ed8936'; // orange for medium
+                        } else {
+                            color = '#e53e3e'; // red for high
+                        }
+                        
+                        L.circleMarker([point.lat, point.lon], {
+                            radius: radius,
+                            color: color,
+                            fillColor: color,
+                            fillOpacity: 0.6,
+                            weight: 1
+                        }).addTo(crimeMap).bindPopup(`
+                            <b>${point.place_of_crime}</b><br>
+                            Crimes: ${point.count}<br>
+                            Last Incident: ${point.last_incident}
+                        `);
+                    });
+                    document.getElementById('mapError').style.display = 'none';
+                })
+                .catch(error => {
+                    console.error('Error fetching map data:', error);
+                    document.getElementById('mapError').style.display = 'block';
+                });
+        }
+
+        // Initialize DataTable
+        function initializeDataTable() {
+            window.criminalTable = $('#criminalTable').DataTable({
+                serverSide: true,
+                processing: true,
+                ajax: function(data, callback, settings) {
+                    const params = new URLSearchParams();
+                    params.append('draw', data.draw);
+                    params.append('start', data.start);
+                    params.append('length', data.length);
+                    params.append('search[value]', data.search.value);
+                    params.append('crime_type', document.getElementById('crimeTypeFilter').value);
+                    params.append('motive', document.getElementById('motiveFilter').value);
+                    params.append('place', document.getElementById('placeFilter').value);
+                    
+                    fetch(`/api/criminal-history?${params.toString()}`)
+                        .then(response => response.json())
+                        .then(json => {
+                            if (json.error) {
+                                console.error('Error in criminal history:', json.error);
+                                document.getElementById('tableError').style.display = 'block';
+                                document.getElementById('tableError').textContent = json.error;
+                            } else {
+                                document.getElementById('tableError').style.display = 'none';
+                                callback(json);
+                            }
+                        })
+                        .catch(error => {
+                            console.error('Error fetching criminal history:', error);
+                            document.getElementById('tableError').style.display = 'block';
+                            document.getElementById('tableError').textContent = 'Failed to load data';
+                        });
+                },
+                columns: [
+    { data: 'criminal_name' }, 
+    { data: 'crime_type' },
+    { data: 'date_of_crime' },  // New column
+    { data: 'crime_time' },
+    { data: 'place_of_crime' },
+    { 
+        data: 'co_criminals',
+        render: function(data, type, row) {
+            return data || 'None';
+        }
+    },
+    { 
+        data: 'bail_granted',
+        render: function(data, type, row) {
+            if (data === 'On Bail') {
+                return '<span class="badge bg-success">On Bail</span>';
+            } else {
+                return '<span class="badge bg-danger">In Custody</span>';
+            }
+        }
+    },
+    {
+        data: 'actions',
+        render: function() {
+            return `
+                <div class="dropdown">
+                    <button class="btn btn-sm btn-outline-secondary dropdown-toggle" type="button" data-bs-toggle="dropdown">
+                        <i class="fas fa-ellipsis-v"></i>
+                    </button>
+                    <ul class="dropdown-menu">
+                        <li><a class="dropdown-item" href="#"><i class="fas fa-eye me-2"></i>View</a></li>
+                        <li><a class="dropdown-item" href="#"><i class="fas fa-edit me-2"></i>Edit</a></li>
+                        <li><a class="dropdown-item" href="#"><i class="fas fa-trash me-2"></i>Delete</a></li>
+                    </ul>
+                </div>
+            `;
+        }
+    }
+],
+                dom: '<"top"<"row"<"col-md-6"B><"col-md-6"f>>>rt<"bottom"<"row"<"col-md-6"i><"col-md-6"p>>>',
+                buttons: [
+                    { 
+                        extend: 'csv', 
+                        text: '<i class="fas fa-file-csv me-1"></i> CSV', 
+                        className: 'btn btn-sm btn-outline-primary' 
+                    },
+                    { 
+                        extend: 'excel', 
+                        text: '<i class="fas fa-file-excel me-1"></i> Excel', 
+                        className: 'btn btn-sm btn-outline-success' 
+                    },
+                    { 
+                        text: '<i class="fas fa-file-pdf me-1"></i> PDF', 
+                        className: 'btn btn-sm btn-outline-danger',
+                        action: function() { window.location.href = '/export_pdf'; } 
+                    }
+                ],
+                pageLength: 10,
+                lengthMenu: [10, 25, 50, 100],
+                language: {
+                    search: "",
+                    searchPlaceholder: "Search criminals...",
+                    lengthMenu: "Show _MENU_ records",
+                    info: "Showing _START_ to _END_ of _TOTAL_ entries",
+                    paginate: {
+                        first: '<i class="fas fa-angle-double-left"></i>',
+                        previous: '<i class="fas fa-angle-left"></i>',
+                        next: '<i class="fas fa-angle-right"></i>',
+                        last: '<i class="fas fa-angle-double-right"></i>'
+                    }
+                },
+                initComplete: function() {
+                    $('.dataTables_filter input').addClass('form-control form-control-sm');
+                }
+            });
+
+            // Search functionality
+            $('#criminalSearch').on('keyup', function() {
+                criminalTable.search(this.value).draw();
+            });
+        }
+
+        // Fetch and render bar chart data
+        function fetchBarChartData() {
+            fetch('/api/crime-data')
+                .then(response => response.json())
+                .then(data => {
+                    if (!data.bar || !data.bar.hours || !data.bar.counts) {
+                        throw new Error('Invalid bar chart data');
+                    }
+                    
+                    if (barChart) {
+                        barChart.destroy();
+                    }
+                    
+                    const ctx = document.getElementById('barChart').getContext('2d');
+                    const isDark = document.body.classList.contains('dark-mode');
+                    const gridColor = isDark ? '#4a5568' : '#e2e8f0';
+                    
+                    barChart = new Chart(ctx, {
+                        type: 'bar',
+                        data: {
+                            labels: data.bar.hours,
+                            datasets: [{ 
+                                label: 'Crimes', 
+                                data: data.bar.counts, 
+                                backgroundColor: '#4ecdc4',
+                                borderRadius: 4,
+                                borderWidth: 1,
+                                borderColor: isDark ? '#4a5568' : '#e2e8f0'
+                            }]
+                        },
+                        options: { 
+                            responsive: true,
+                            plugins: {
+                                legend: {
+                                    display: false
+                                },
+                                tooltip: {
+                                    backgroundColor: isDark ? '#1a202c' : '#2d3748',
+                                    titleFont: {
+                                        weight: '600'
+                                    },
+                                    bodyColor: isDark ? '#f7fafc' : '#2d3748'
+                                }
+                            },
+                            scales: { 
+                                y: { 
+                                    beginAtZero: true,
+                                    grid: {
+                                        color: gridColor
+                                    },
+                                    ticks: {
+                                        color: isDark ? '#f7fafc' : '#2d3748'
+                                    }
+                                },
+                                x: {
+                                    grid: {
+                                        display: false
+                                    },
+                                    ticks: {
+                                        color: isDark ? '#f7fafc' : '#2d3748'
+                                    }
+                                }
+                            } 
+                        }
+                    });
+                    document.getElementById('barChartError').style.display = 'none';
+                })
+                .catch(error => {
+                    console.error('Error fetching bar chart data:', error);
+                    document.getElementById('barChartError').style.display = 'block';
+                });
+        }
+
+        // Fetch and render pie chart data
+        function fetchPieChartData() {
+            fetch('/api/crime-data')
+                .then(response => response.json())
+                .then(data => {
+                    if (!data.pie || !data.pie.labels || !data.pie.counts) {
+                        throw new Error('Invalid pie chart data');
+                    }
+                    
+                    if (pieChart) {
+                        pieChart.destroy();
+                    }
+                    
+                    const pieCtx = document.getElementById('pieChart').getContext('2d');
+                    const isDark = document.body.classList.contains('dark-mode');
+                    
+                    pieChart = new Chart(pieCtx, {
+                        type: 'doughnut',
+                        data: {
+                            labels: data.pie.labels,
+                            datasets: [{ 
+                                data: data.pie.counts, 
+                                backgroundColor: [
+                                    '#2a52be', '#ff6b6b', '#4ecdc4', '#ed8936', '#9f7aea'
+                                ],
+                                borderWidth: 1,
+                                borderColor: isDark ? '#4a5568' : '#fff'
+                            }]
+                        },
+                        options: {
+                            responsive: true,
+                            cutout: '70%',
+                            plugins: {
+                                legend: {
+                                    display: false
+                                },
+                                tooltip: {
+                                    backgroundColor: isDark ? '#1a202c' : '#2d3748',
+                                    titleFont: {
+                                        weight: '600'
+                                    },
+                                    bodyColor: isDark ? '#f7fafc' : '#2d3748'
+                                },
+                                datalabels: {
+                                    formatter: (value, ctx) => {
+                                        let sum = 0;
+                                        let dataArr = ctx.chart.data.datasets[0].data;
+                                        dataArr.map(data => {
+                                            sum += data;
+                                        });
+                                        let percentage = (value*100 / sum).toFixed(1)+"%";
+                                        return percentage;
+                                    },
+                                    color: '#fff',
+                                    font: {
+                                        weight: '600'
+                                    }
+                                }
+                            }
+                        },
+                        plugins: [ChartDataLabels]
+                    });
+
+                    // Generate pie chart legend
+                    const pieLegend = document.getElementById('pieLegend');
+                    pieLegend.innerHTML = ''; // Clear existing legend
+                    data.pie.labels.forEach((label, index) => {
+                        const legendItem = document.createElement('div');
+                        legendItem.className = 'd-flex align-items-center mb-2';
+                        legendItem.innerHTML = `
+                            <span class="badge me-2" style="background-color: ${pieChart.data.datasets[0].backgroundColor[index]}; width: 12px; height: 12px; display: inline-block;"></span>
+                            <span style="font-size: 13px; color: ${isDark ? '#f7fafc' : '#2d3748'}">${label}</span>
+                            <span class="ms-auto fw-semibold" style="color: ${isDark ? '#f7fafc' : '#2d3748'}">${pieChart.data.datasets[0].data[index]}</span>
+                        `;
+                        pieLegend.appendChild(legendItem);
+                    });
+                    document.getElementById('pieChartError').style.display = 'none';
+                })
+                .catch(error => {
+                    console.error('Error fetching pie chart data:', error);
+                    document.getElementById('pieChartError').style.display = 'block';
+                });
+        }
+
+        // Fetch and render line chart data
+        function fetchLineChartData() {
+            fetch('/api/crime-data')
+                .then(response => response.json())
+                .then(data => {
+                    if (!data.line || !data.line.hours || !data.line.datasets) {
+                        throw new Error('Invalid line chart data');
+                    }
+                    
+                    if (lineChart) {
+                        lineChart.destroy();
+                    }
+                    
+                    const lineCtx = document.getElementById('lineChart').getContext('2d');
+                    const isDark = document.body.classList.contains('dark-mode');
+                    const gridColor = isDark ? '#4a5568' : '#e2e8f0';
+                    
+                    lineChart = new Chart(lineCtx, {
+                        type: 'line',
+                        data: {
+                            labels: data.line.hours,
+                            datasets: data.line.datasets.map(ds => ({ 
+                                ...ds, 
+                                borderColor: '#2a52be', 
+                                backgroundColor: 'rgba(42, 82, 190, 0.1)',
+                                borderWidth: 2,
+                                pointBackgroundColor: isDark ? '#2d3748' : '#fff',
+                                pointBorderColor: '#2a52be',
+                                pointBorderWidth: 2,
+                                pointRadius: 4,
+                                pointHoverRadius: 6,
+                                tension: 0.3,
+                                fill: document.getElementById('trendLineToggle').checked
+                            }))
+                        },
+                        options: {
+                            responsive: true,
+                            plugins: {
+                                tooltip: {
+                                    backgroundColor: isDark ? '#1a202c' : '#2d3748',
+                                    titleFont: {
+                                        weight: '600'
+                                    },
+                                    bodyColor: isDark ? '#f7fafc' : '#2d3748'
+                                },
+                                legend: {
+                                    position: 'top',
+                                    labels: {
+                                        usePointStyle: true,
+                                        pointStyle: 'circle',
+                                        padding: 20,
+                                        color: isDark ? '#f7fafc' : '#2d3748'
+                                    }
+                                }
+                            },
+                            scales: {
+                                y: {
+                                    grid: {
+                                        color: gridColor
+                                    },
+                                    ticks: {
+                                        color: isDark ? '#f7fafc' : '#2d3748'
+                                    }
+                                },
+                                x: {
+                                    grid: {
+                                        display: false
+                                    },
+                                    ticks: {
+                                        color: isDark ? '#f7fafc' : '#2d3748'
+                                    }
+                                }
+                            }
+                        }
+                    });
+                    document.getElementById('lineChartError').style.display = 'none';
+                })
+                .catch(error => {
+                    console.error('Error fetching line chart data:', error);
+                    document.getElementById('lineChartError').style.display = 'block';
+                });
+        }
+
+        // Fetch and render recidivism data
+        function fetchRecidivismData() {
+            fetch('/api/crime-data')
+                .then(response => response.json())
+                .then(data => {
+                    if (!data.recidivism) {
+                        throw new Error('Invalid recidivism data');
+                    }
+                    
+                    if (recidivismChart) {
+                        recidivismChart.destroy();
+                    }
+                    
+                    const recidivismCtx = document.getElementById('recidivismChart').getContext('2d');
+                    const isDark = document.body.classList.contains('dark-mode');
+                    const gridColor = isDark ? '#4a5568' : '#e2e8f0';
+                    
+                    recidivismChart = new Chart(recidivismCtx, {
+                        type: 'bar',
+                        data: {
+                            labels: data.recidivism.map(r => r.criminal_name),
+                            datasets: [{ 
+                                label: 'Crime Count', 
+                                data: data.recidivism.map(r => r.crime_count), 
+                                backgroundColor: '#ff6b6b',
+                                borderRadius: 4,
+                                borderWidth: 1,
+                                borderColor: isDark ? '#4a5568' : '#e2e8f0'
+                            }]
+                        },
+                        options: { 
+                            responsive: true,
+                            plugins: {
+                                legend: {
+                                    display: false
+                                },
+                                tooltip: {
+                                    backgroundColor: isDark ? '#1a202c' : '#2d3748',
+                                    titleFont: {
+                                        weight: '600'
+                                    },
+                                    bodyColor: isDark ? '#f7fafc' : '#2d3748'
+                                }
+                            },
+                            scales: { 
+                                y: { 
+                                    beginAtZero: true,
+                                    grid: {
+                                        color: gridColor
+                                    },
+                                    ticks: {
+                                        color: isDark ? '#f7fafc' : '#2d3748'
+                                    }
+                                },
+                                x: {
+                                    grid: {
+                                        display: false
+                                    },
+                                    ticks: {
+                                        color: isDark ? '#f7fafc' : '#2d3748'
+                                    }
+                                }
+                            } 
+                        }
+                    });
+                    document.getElementById('recidivismChartError').style.display = 'none';
+                })
+                .catch(error => {
+                    console.error('Error fetching recidivism data:', error);
+                    document.getElementById('recidivismChartError').style.display = 'block';
+                });
+        }
+
+        // Toggle trend line on line chart
+        function toggleTrendLine() {
+            if (lineChart) {
+                lineChart.data.datasets.forEach(dataset => {
+                    dataset.fill = this.checked;
+                });
+                lineChart.update();
+            }
+        }
+
+        // Export line chart as image
+        function exportLineChart() {
+            if (lineChart) {
+                const link = document.createElement('a');
+                link.download = 'crime-trends.png';
+                link.href = lineChart.toBase64Image();
+                link.click();
+            }
+        }
+
+        // Add new record (placeholder function)
+        function addNewRecord() {
+            alert('Add new record functionality would go here');
+            // In a real implementation, this would open a modal form
+        }
+
+        // Smooth scrolling for sidebar links
+        document.querySelectorAll('.sidebar a').forEach(anchor => {
+            anchor.addEventListener('click', function(e) {
+                e.preventDefault();
+                const targetId = this.getAttribute('href');
+                const targetElement = document.querySelector(targetId);
+                
+                if (targetElement) {
+                    // Remove active class from all links
+                    document.querySelectorAll('.sidebar a').forEach(link => {
+                        link.classList.remove('active');
+                    });
+                    
+                    // Add active class to clicked link
+                    this.classList.add('active');
+                    
+                    // Scroll to target
+                    window.scrollTo({
+                        top: targetElement.offsetTop - 20,
+                        behavior: 'smooth'
+                    });
+                }
+            });
+        });
+
+        // Update active sidebar link on scroll
+        window.addEventListener('scroll', function() {
+            const scrollPosition = window.scrollY;
+            
+            document.querySelectorAll('.chart-container').forEach(section => {
+                const sectionTop = section.offsetTop - 100;
+                const sectionBottom = sectionTop + section.offsetHeight;
+                const sectionId = '#' + section.id;
+                
+                if (scrollPosition >= sectionTop && scrollPosition < sectionBottom) {
+                    document.querySelectorAll('.sidebar a').forEach(link => {
+                        link.classList.remove('active');
+                        if (link.getAttribute('href') === sectionId) {
+                            link.classList.add('active');
+                        }
+                    });
+                }
+            });
+        });
+    </script>
+</body>
+</html>
